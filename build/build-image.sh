@@ -25,7 +25,7 @@ if [ "$EUID" -ne 0 ]
   exit 1
 fi
 
-if [ $# != 2 ] && [ $# != 3 ] ; then
+if [ $# -lt 2 ] || [ $# -gt 4 ]; then
   echo "Usage: ./<cmd> YES <image.img> [branch] [user]"
   exit 1
 fi
@@ -133,9 +133,13 @@ fi
 execute "cp $IMG $OUTFILE"
 
 # Mount
-execute "mount -o loop,offset=4194304 $OUTFILE $MOUNTFAT32"
-#execute "mount -o loop,offset=63963136 $OUTFILE $MOUNTEXT4"  # OLD IMAGES
-execute "mount -o loop,offset=272629760 $OUTFILE $MOUNTEXT4"
+#execute "mount -o loop,offset=4194304,sizelimit=29360128 $OUTFILE $MOUNTFAT32"
+##execute "mount -o loop,offset=63963136 $OUTFILE $MOUNTEXT4"  # OLD IMAGES
+#execute "mount -o loop,offset=272629760 $OUTFILE $MOUNTEXT4"
+execute "export LOOPDEV=$(losetup -Pf --show $OUTFILE)"
+LOOPDEV="$(echo $LOOPDEV | tr -d '\n')"
+execute "mount \"${LOOPDEV}p1\" $MOUNTFAT32"
+execute "mount \"${LOOPDEV}p2\" $MOUNTEXT4"
 
 # Install
 execute "../install.sh YES $BRANCH $MOUNTFAT32 $MOUNTEXT4"
@@ -143,6 +147,7 @@ execute "../install.sh YES $BRANCH $MOUNTFAT32 $MOUNTEXT4"
 # Unmount
 execute "umount $MOUNTFAT32"
 execute "umount $MOUNTEXT4"
+execute "losetup -d $LOOPDEV"
 
 # DONE
 echo "SUCCESS: Image [$OUTFILE] has been built!"
